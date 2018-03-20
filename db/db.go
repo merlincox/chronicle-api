@@ -15,7 +15,224 @@ var (
     dummyPlaylists []models.Playlist
 )
 
-type RawDummyVideo struct {
+func GetPlaylists(offset, limit int) (models.PlaylistCollection, error) {
+
+    offset, limit = sanitizeParams(offset, limit, len(dummyPlaylists))
+
+    dummyPlaylistCollection := models.PlaylistCollection{
+        Items: dummyPlaylists[offset:offset + limit],
+        Total: len(dummyPlaylists),
+        Offset: offset,
+    }
+
+    return dummyPlaylistCollection, error(nil)
+}
+
+func GetVideos(offset, limit int) (models.VideoPackageCollection, error) {
+
+    offset, limit = sanitizeParams(offset, limit, len(dummyVideoPackages))
+
+    dummyVideoPackageCollection := models.VideoPackageCollection{
+        Items: dummyVideoPackages[offset:offset + limit],
+        Total: len(dummyVideoPackages),
+        Offset: offset,
+    }
+
+    return dummyVideoPackageCollection, error(nil)
+}
+
+func GetHeros(offset, limit int) (models.HeroCollection, error) {
+
+    offset, limit = sanitizeParams(offset, limit, len(dummyHeros))
+
+    dummyHeroCollection := models.HeroCollection{
+        Items: dummyHeros[offset:offset + limit],
+        Total: len(dummyHeros),
+        Offset: offset,
+    }
+
+    return dummyHeroCollection, error(nil)
+}
+
+func GetPlaylist(id string) (models.Playlist, error) {
+
+    var playlist models.Playlist
+
+    if playlist, ok := dummyPlaylistsMap[id]; ok {
+        return playlist, nil
+    }
+
+    return playlist, fmt.Errorf("No such playlist as %v", id)
+}
+
+func GetVideoPackage(id string) (models.VideoPackage, error) {
+
+    var video models.VideoPackage
+
+    if video, ok := dummyVideoPackagesMap[id]; ok {
+        return video, nil
+    }
+
+    return video, fmt.Errorf("No such video as %v", id)
+}
+
+func Init() {
+
+    var (
+        dummyVideosMap map[string]models.Video
+        dummyVideos []models.Video
+    )
+
+    rva, _ := getRawVideos()
+    rpa, _ := getRawPlaylists()
+
+    dummyVideosMap = make(map[string]models.Video, len(rva))
+    dummyVideoPackagesMap = make(map[string]models.VideoPackage, len(rva))
+    dummyPlaylistsMap = make(map[string]models.Playlist, len(rpa))
+
+    for _, rp := range rpa {
+
+        dummyPlaylists = append(dummyPlaylists, models.Playlist{
+
+            Title: rp.Title,
+            Topic: rp.Topic,
+            Id: rp.Id,
+            Description: rp.Description,
+            CoverImageUrl: rp.CoverImageUrl,
+            Videos: []models.Video{},
+            LinkUri: "/playlist/" + rp.Id + "/" + utils.Slug(rp.Title),
+            Uri: "/playlist/" + rp.Id,
+        })
+    }
+
+    j := 0
+    topic := "Earth"
+
+    for i, rv := range rva {
+
+        if i == 3 {
+            topic = "Africa"
+            j = 1
+        }
+
+        dummyVideosMap[rv.Id] = models.Video{
+            SmpData: &models.SmpData{
+                Items: rv.Items,
+                Title: rv.Title,
+                Summary: rv.Summary,
+                HoldingImageURL: rv.HoldingImageURL,
+            },
+            Id: rv.Id,
+            Topic: topic,
+            LinkUri: "/video/" + rv.Id + "/" + utils.Slug(rv.Title),
+            Uri: "/video/" + rv.Id,
+        }
+
+        dummyPlaylists[j].Videos = append(dummyPlaylists[j].Videos, dummyVideosMap[rv.Id])
+
+        dummyVideos = append(dummyVideos, dummyVideosMap[rv.Id])
+
+        var smpData models.SmpData
+        if len(dummyHeros) < 2 {
+            useVideo := (len(dummyHeros) % 2) == 0
+            smpData = makeSmpFromVideo(dummyVideosMap[rv.Id], useVideo)
+            dummyHeros = append(dummyHeros, models.Hero{
+                SmpData: &smpData,
+                LinkUri: dummyVideosMap[rv.Id].LinkUri,
+                Topic: dummyVideosMap[rv.Id].Topic,
+            })
+        }
+    }
+
+    for _, pl := range dummyPlaylists {
+        for _, v := range pl.Videos {
+
+            dummyVideoPackagesMap[v.Id] = models.VideoPackage{
+                Primary: &v,
+                Siblings: filteredVideos(pl.Videos, v.Id),
+            }
+
+            dummyVideoPackages = append(dummyVideoPackages, dummyVideoPackagesMap[v.Id])
+        }
+        dummyPlaylistsMap[pl.Id] = pl
+        var smpData models.SmpData
+        if len(dummyHeros) < 4 {
+            useVideo := (len(dummyHeros) % 2) == 0
+            smpData = makeSmpFromPlaylist(pl, useVideo)
+            dummyHeros = append(dummyHeros, models.Hero{
+                SmpData: &smpData,
+                LinkUri: pl.LinkUri,
+                Topic: pl.Topic,
+            })
+        }
+
+    }
+
+}
+
+func sanitizeParams(offset, limit, size int) (int, int) {
+
+    if offset < 0 {
+        offset = 0
+    }
+
+    if offset > size {
+        offset = size
+    }
+
+    if ( limit < 1 ) || (offset + limit > size) {
+        limit = size - offset
+    }
+
+    return offset, limit
+}
+
+func filteredVideos(input []models.Video, id string) []models.Video {
+
+    var output []models.Video
+
+    for _, v := range input {
+        if v.Id != id {
+            output = append(output, v)
+        }
+    }
+
+    return output
+}
+
+func makeSmpFromPlaylist(pl models.Playlist, withVideo bool) models.SmpData {
+
+    var items []models.MediaItem
+
+    if withVideo {
+        items = pl.Videos[0].SmpData.Items
+    }
+
+    return models.SmpData{
+        Title: pl.Title,
+        Summary: pl.Description,
+        HoldingImageURL: pl.CoverImageUrl,
+        Items: items,
+    }
+}
+
+func makeSmpFromVideo(v models.Video, withVideo bool) models.SmpData {
+
+    var items []models.MediaItem
+
+    if withVideo {
+        items = v.SmpData.Items
+    }
+
+    return models.SmpData{
+        Title: v.SmpData.Title,
+        Summary: v.SmpData.Summary,
+        HoldingImageURL: v.SmpData.HoldingImageURL,
+        Items: items,
+    }
+}
+
+type rawDummyVideo struct {
     Title       string `json:"title"`
     Summary string `json:"summary,omitempty"`
     Id string `json:"id"`
@@ -162,7 +379,7 @@ func getDummyVideos() []byte {
     return dummyData1
 }
 
-type RawDummyPlaylist struct {
+type rawDummyPlaylist struct {
     Title       string `json:"title"`
     Description string `json:"description,omitempty"`
     Id string `json:"Id"`
@@ -191,9 +408,9 @@ func getDummyPlaylists() []byte {
     return dummyData
 }
 
-func getRawPlaylists() ([]RawDummyPlaylist, error) {
+func getRawPlaylists() ([]rawDummyPlaylist, error) {
 
-    var rpa []RawDummyPlaylist
+    var rpa []rawDummyPlaylist
 
     err := json.Unmarshal(getDummyPlaylists(), &rpa)
 
@@ -204,9 +421,9 @@ func getRawPlaylists() ([]RawDummyPlaylist, error) {
     return rpa, err
 }
 
-func getRawVideos() ([]RawDummyVideo, error) {
+func getRawVideos() ([]rawDummyVideo, error) {
 
-    var rva []RawDummyVideo
+    var rva []rawDummyVideo
 
     err := json.Unmarshal(getDummyVideos(), &rva)
 
@@ -215,219 +432,4 @@ func getRawVideos() ([]RawDummyVideo, error) {
     }
 
     return rva, err
-}
-
-func sanitizeParams(offset, limit, size int) (int, int) {
-
-    if offset < 0 {
-        offset = 0
-    }
-
-    if offset > size {
-        offset = size
-    }
-
-    if ( limit < 1 ) || (offset + limit > size) {
-        limit = size - offset
-    }
-
-    return offset, limit
-}
-
-func GetPlaylists(offset, limit int) (models.PlaylistCollection, error) {
-
-    offset, limit = sanitizeParams(offset, limit, len(dummyPlaylists))
-
-    dummyPlaylistCollection := models.PlaylistCollection{
-        Items: dummyPlaylists[offset:offset + limit],
-        Total: len(dummyPlaylists),
-        Offset: offset,
-    }
-
-    return dummyPlaylistCollection, error(nil)
-}
-
-func GetVideos(offset, limit int) (models.VideoPackageCollection, error) {
-
-    offset, limit = sanitizeParams(offset, limit, len(dummyVideoPackages))
-
-    dummyVideoPackageCollection := models.VideoPackageCollection{
-        Items: dummyVideoPackages[offset:offset + limit],
-        Total: len(dummyVideoPackages),
-        Offset: offset,
-    }
-
-    return dummyVideoPackageCollection, error(nil)
-}
-
-func GetHeros(offset, limit int) (models.HeroCollection, error) {
-
-    offset, limit = sanitizeParams(offset, limit, len(dummyHeros))
-
-    dummyHeroCollection := models.HeroCollection{
-        Items: dummyHeros[offset:offset + limit],
-        Total: len(dummyHeros),
-        Offset: offset,
-    }
-
-    return dummyHeroCollection, error(nil)
-}
-
-func GetPlaylist(id string) (models.Playlist, error) {
-
-    var playlist models.Playlist
-
-    if playlist, ok := dummyPlaylistsMap[id]; ok {
-        return playlist, nil
-    }
-
-    return playlist, fmt.Errorf("No such playlist as %v", id)
-}
-
-func GetVideoPackage(id string) (models.VideoPackage, error) {
-
-    var video models.VideoPackage
-
-    if video, ok := dummyVideoPackagesMap[id]; ok {
-        return video, nil
-    }
-
-    return video, fmt.Errorf("No such video as %v", id)
-}
-
-func Init() {
-
-    var (
-        dummyVideosMap map[string]models.Video
-        dummyVideos []models.Video
-    )
-
-    rva, _ := getRawVideos()
-    rpa, _ := getRawPlaylists()
-
-    dummyVideosMap = make(map[string]models.Video, len(rva))
-    dummyVideoPackagesMap = make(map[string]models.VideoPackage, len(rva))
-    dummyPlaylistsMap = make(map[string]models.Playlist, len(rpa))
-
-    for _, rp := range rpa {
-
-        dummyPlaylists = append(dummyPlaylists, models.Playlist{
-
-            Title: rp.Title,
-            Topic: rp.Topic,
-            Id: rp.Id,
-            Description: rp.Description,
-            CoverImageUrl: rp.CoverImageUrl,
-            Videos: []models.Video{},
-            LinkUri: "/playlist/" + rp.Id + "/" + utils.Slug(rp.Title),
-        })
-    }
-
-    j := 0
-    topic := "Earth"
-
-    for i, rv := range rva {
-
-        if i == 3 {
-            topic = "Africa"
-            j = 1
-        }
-
-        dummyVideosMap[rv.Id] = models.Video{
-            SmpData: &models.SmpData{
-                Items: rv.Items,
-                Title: rv.Title,
-                Summary: rv.Summary,
-                HoldingImageURL: rv.HoldingImageURL,
-            },
-            Id: rv.Id,
-            Topic: topic,
-            LinkUri: "/video/" + rv.Id + "/" + utils.Slug(rv.Title),
-        }
-
-        dummyPlaylists[j].Videos = append(dummyPlaylists[j].Videos, dummyVideosMap[rv.Id])
-
-        dummyVideos = append(dummyVideos, dummyVideosMap[rv.Id])
-
-        var smpData models.SmpData
-        if len(dummyHeros) < 2 {
-            useVideo := (len(dummyHeros) % 2) == 0
-            smpData = makeSmpFromVideo(dummyVideosMap[rv.Id], useVideo)
-            dummyHeros = append(dummyHeros, models.Hero{
-                SmpData: &smpData,
-                LinkUri: dummyVideosMap[rv.Id].LinkUri,
-                Topic: dummyVideosMap[rv.Id].Topic,
-            })
-        }
-    }
-
-    for _, pl := range dummyPlaylists {
-        for _, v := range pl.Videos {
-
-            dummyVideoPackagesMap[v.Id] = models.VideoPackage{
-                Primary: &v,
-                Siblings: filteredVideos(pl.Videos, v.Id),
-            }
-
-            dummyVideoPackages = append(dummyVideoPackages, dummyVideoPackagesMap[v.Id])
-        }
-        dummyPlaylistsMap[pl.Id] = pl
-        var smpData models.SmpData
-        if len(dummyHeros) < 4 {
-            useVideo := (len(dummyHeros) % 2) == 0
-            smpData = makeSmpFromPlaylist(pl, useVideo)
-            dummyHeros = append(dummyHeros, models.Hero{
-                SmpData: &smpData,
-                LinkUri: pl.LinkUri,
-                Topic: pl.Topic,
-            })
-        }
-
-    }
-
-}
-
-func filteredVideos(input []models.Video, id string) []models.Video {
-
-    var output []models.Video
-
-    for _, v := range input {
-        if v.Id != id {
-            output = append(output, v)
-        }
-    }
-
-    return output
-}
-
-func makeSmpFromPlaylist(pl models.Playlist, withVideo bool) models.SmpData {
-
-    var items []models.MediaItem
-
-    if withVideo {
-        items = pl.Videos[0].SmpData.Items
-    }
-
-    return models.SmpData{
-        Title: pl.Title,
-        Summary: pl.Description,
-        HoldingImageURL: pl.CoverImageUrl,
-        Items: items,
-    }
-}
-
-func makeSmpFromVideo(v models.Video, withVideo bool) models.SmpData {
-
-    var items []models.MediaItem
-
-    if withVideo {
-        items = v.SmpData.Items
-    }
-
-    return models.SmpData{
-        Title: v.SmpData.Title,
-        Summary: v.SmpData.Summary,
-        HoldingImageURL: v.SmpData.HoldingImageURL,
-        Items: items,
-    }
 }
