@@ -18,7 +18,7 @@ type CuratedPlaylistCollection struct {
 // Curator: A curator within GNL Chronicle
 type Curator struct {
   Description string `json:"description,omitempty"`
-  Fileid string `json:"fileid"`
+  Id string `json:"id"`
   Image string `json:"image"`
   Name string `json:"name"`
 }
@@ -26,7 +26,7 @@ type Curator struct {
 // Hero: Hero data for GNL Chronicle
 type Hero struct {
   LinkUri string `json:"linkUri"`
-  Smp *SMP `json:"smp"`
+  SmpData *SmpData `json:"smpData,omitempty"`
   SponsorId string `json:"sponsorId,omitempty"`
   Topic string `json:"topic,omitempty"`
 }
@@ -47,13 +47,15 @@ type MediaItem struct {
 
 // Playlist: A Playlist within GNL Chronicle
 type Playlist struct {
+  CoverImageUrl string `json:"coverImageUrl"`
   Curator *Curator `json:"curator,omitempty"`
   Description string `json:"description,omitempty"`
-  Fileid string `json:"fileid"`
+  Id string `json:"id"`
   LinkUri string `json:"linkUri"`
   SponsorID string `json:"sponsorID,omitempty"`
   Title string `json:"title"`
   Topic string `json:"topic,omitempty"`
+  Uri string `json:"uri"`
   Videos []Video `json:"videos"`
 }
 
@@ -64,8 +66,8 @@ type PlaylistCollection struct {
   Total int `json:"total"`
 }
 
-// SMP: SMP data object
-type SMP struct {
+// SmpData: SMP data object
+type SmpData struct {
   Guidance string `json:"guidance,omitempty"`
   HoldingImageURL string `json:"holdingImageURL"`
   Items []MediaItem `json:"items,omitempty"`
@@ -85,7 +87,7 @@ type TopicVideoCollection struct {
   Offset int `json:"offset"`
   Topic *Topic `json:"topic"`
   Total int `json:"total"`
-  Videos []Video `json:"videos"`
+  Videos []VideoPackage `json:"videos"`
 }
 
 // TopicVideoCollectionCollection: Collection of collections of videos by topic within GNL Chronicle
@@ -95,20 +97,27 @@ type TopicVideoCollectionCollection struct {
   Total int `json:"total"`
 }
 
-// Video: A Video within GNL Chronicle
+// Video: An individual video within GNL Chronicle
 type Video struct {
   Breakpoints []int `json:"breakpoints,omitempty"`
   Id string `json:"id"`
   LinkUri string `json:"linkUri"`
-  Smp *SMP `json:"smp"`
+  SmpData *SmpData `json:"smpData,omitempty"`
   SponsorID string `json:"sponsorID,omitempty"`
   Tags []string `json:"tags,omitempty"`
   Topic string `json:"topic"`
+  Uri string `json:"uri"`
 }
 
-// VideoCollection: Collection of Videos within GNL Chronicle
-type VideoCollection struct {
-  Items []Video `json:"items"`
+// VideoPackage: A video packaged with its playlist siblings within GNL Chronicle
+type VideoPackage struct {
+  Primary *Video `json:"primary"`
+  Siblings []Video `json:"siblings,omitempty"`
+}
+
+// VideoPackageCollection: A collection of video packages within GNL Chronicle
+type VideoPackageCollection struct {
+  Items []VideoPackage `json:"items"`
   Offset int `json:"offset"`
   Total int `json:"total"`
 }

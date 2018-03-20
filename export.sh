@@ -3,7 +3,7 @@
 set -euo pipefail
 
 api_id=k4qyz2m8md
-stage_name=v0_4
+stage_name=v0_5
 package=models
 package_dir=models
 
