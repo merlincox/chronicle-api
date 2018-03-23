@@ -19,7 +19,9 @@ func main() {
     NB: AWS needs to be defined as an environmental variable for the Lambda
      */
     if os.Getenv("AWS") == "true" {
+
         lambda.Start(front.Handler)
+
     } else {
 
         videos, _ := db.GetVideos(0, 0)

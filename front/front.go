@@ -69,5 +69,5 @@ func buildResponse(data interface{}, statusCode int, err error) events.APIGatewa
         body = utils.JsonStringify(data)
     }
 
-    return events.APIGatewayProxyResponse{Body:body, StatusCode: statusCode}
+    return events.APIGatewayProxyResponse{Body:body, StatusCode: statusCode, Headers: map[string]string{"Access-Control-Allow-Origin": "*"}}
 }
