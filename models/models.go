@@ -23,10 +23,16 @@ type Curator struct {
   Name string `json:"name"`
 }
 
+// Empty: (No description)
+type Empty struct {
+}
+
 // Hero: Hero data for GNL Chronicle
 type Hero struct {
+  BackgroundImage string `json:"backgroundImage,omitempty"`
   LinkUri string `json:"linkUri"`
-  SmpData *SmpData `json:"smpData,omitempty"`
+  PreviewSmpData *SmpData `json:"previewSmpData,omitempty"`
+  SmpData *SmpData `json:"smpData"`
   SponsorId string `json:"sponsorId,omitempty"`
   Topic string `json:"topic,omitempty"`
 }
@@ -36,6 +42,16 @@ type HeroCollection struct {
   Items []Hero `json:"items"`
   Offset int `json:"offset"`
   Total int `json:"total"`
+}
+
+// HeroSkeleton: A skeleton hero for GNL Chronicle Backend
+type HeroSkeleton struct {
+  BackgroundImage string `json:"backgroundImage,omitempty"`
+  LinkId string `json:"linkId"`
+  LinkType string `json:"linkType"`
+  PreviewId string `json:"previewId,omitempty"`
+  SponsorId string `json:"sponsorId,omitempty"`
+  Topic string `json:"topic,omitempty"`
 }
 
 // MediaItem: A MediaItem as passed within the array of items to play to SMP
@@ -49,14 +65,11 @@ type MediaItem struct {
 type Playlist struct {
   CoverImageUrl string `json:"coverImageUrl"`
   Curator *Curator `json:"curator,omitempty"`
-  Description string `json:"description,omitempty"`
-  Id string `json:"id"`
-  LinkUri string `json:"linkUri"`
+  Items []Video `json:"items"`
   SponsorID string `json:"sponsorID,omitempty"`
+  Summary string `json:"summary,omitempty"`
   Title string `json:"title"`
   Topic string `json:"topic,omitempty"`
-  Uri string `json:"uri"`
-  Videos []Video `json:"videos"`
 }
 
 // PlaylistCollection: Collection of Videos within GNL Chronicle
@@ -66,6 +79,25 @@ type PlaylistCollection struct {
   Total int `json:"total"`
 }
 
+// PlaylistSkeleton: A skeleton playlist within GNL Chronicle Backend
+type PlaylistSkeleton struct {
+  CoverImageUrl string `json:"coverImageUrl"`
+  Curator *Curator `json:"curator,omitempty"`
+  Id string `json:"id,omitempty"`
+  Items []string `json:"items"`
+  SponsorID string `json:"sponsorID,omitempty"`
+  Summary string `json:"summary,omitempty"`
+  Title string `json:"title"`
+  Topic string `json:"topic,omitempty"`
+}
+
+// SkeletonCollection: A collection of skeletons and videos for mocking within GNL Chronicle Backend
+type SkeletonCollection struct {
+  Heros []HeroSkeleton `json:"heros,omitempty"`
+  Playlists []PlaylistSkeleton `json:"playlists,omitempty"`
+  Videos []Video `json:"videos,omitempty"`
+}
+
 // SmpData: SMP data object
 type SmpData struct {
   Guidance string `json:"guidance,omitempty"`
@@ -73,28 +105,6 @@ type SmpData struct {
   Items []MediaItem `json:"items,omitempty"`
   Summary string `json:"summary,omitempty"`
   Title string `json:"title"`
-}
-
-// Topic: A topic within GNL Chronicle
-type Topic struct {
-  Description string `json:"description,omitempty"`
-  Fileid string `json:"fileid"`
-  Name string `json:"name"`
-}
-
-// TopicVideoCollection: Collection of Videos by Topic within GNL Chronicle
-type TopicVideoCollection struct {
-  Offset int `json:"offset"`
-  Topic *Topic `json:"topic"`
-  Total int `json:"total"`
-  Videos []VideoPackage `json:"videos"`
-}
-
-// TopicVideoCollectionCollection: Collection of collections of videos by topic within GNL Chronicle
-type TopicVideoCollectionCollection struct {
-  Items []TopicVideoCollection `json:"items"`
-  Offset int `json:"offset"`
-  Total int `json:"total"`
 }
 
 // Video: An individual video within GNL Chronicle
@@ -109,15 +119,23 @@ type Video struct {
   Uri string `json:"uri"`
 }
 
-// VideoPackage: A video packaged with its playlist siblings within GNL Chronicle
-type VideoPackage struct {
-  Primary *Video `json:"primary"`
-  Siblings []Video `json:"siblings,omitempty"`
+// VideoCollection: A collection of videos within GNL Chronicle
+type VideoCollection struct {
+  Items []Video `json:"items"`
+  Offset int `json:"offset"`
+  Summary string `json:"summary,omitempty"`
+  Title string `json:"title,omitempty"`
+  Total int `json:"total"`
 }
 
-// VideoPackageCollection: A collection of video packages within GNL Chronicle
-type VideoPackageCollection struct {
-  Items []VideoPackage `json:"items"`
+// VideoCollectionList: A list of video collections within GNL Chronicle
+type VideoCollectionList struct {
+  Items []VideoCollection `json:"items"`
   Offset int `json:"offset"`
   Total int `json:"total"`
+}
+
+// VideoPackage: A video packaged with its playlist siblings within GNL Chronicle
+type VideoPackage struct {
+  Items []Video `json:"items"`
 }

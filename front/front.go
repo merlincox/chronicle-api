@@ -29,11 +29,11 @@ func getInnerHandler(request events.APIGatewayProxyRequest) handlers.InnerHandle
     case "GET/heros":
         return handlers.HerosHandler
 
+    case "GET/topics":
+        return handlers.TopicsHandler
+
     case "GET/video/{id}":
         return handlers.VideoHandler
-
-    case "GET/playlist/{id}":
-        return handlers.PlaylistHandler
 
     case "GET/most-watched/{period}":
         return handlers.MostWatchedHandler
@@ -41,8 +41,8 @@ func getInnerHandler(request events.APIGatewayProxyRequest) handlers.InnerHandle
     case "GET/playlists":
         return handlers.PlaylistsHandler
 
-    case "GET/videos":
-        return handlers.VideosHandler
+    case "GET/picks":
+        return handlers.PicksHandler
 
     }
 

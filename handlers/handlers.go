@@ -45,19 +45,6 @@ func VideoHandler(request events.APIGatewayProxyRequest) (interface{}, int, erro
     return data, 404, err
 }
 
-func PlaylistHandler(request events.APIGatewayProxyRequest) (interface{}, int, error) {
-
-    var data interface{}
-
-    data, err := db.GetPlaylist(request.PathParameters["id"])
-
-    if err == nil {
-        return data, 200, nil
-    }
-
-    return data, 404, err
-}
-
 func MostWatchedHandler(request events.APIGatewayProxyRequest) (interface{}, int, error) {
 
     var data interface{}
@@ -94,7 +81,23 @@ func PlaylistsHandler(request events.APIGatewayProxyRequest) (interface{}, int, 
     return data, code, err
 }
 
-func VideosHandler(request events.APIGatewayProxyRequest) (interface{}, int, error) {
+func TopicsHandler(request events.APIGatewayProxyRequest) (interface{}, int, error) {
+
+    var data interface{}
+    code := 200
+    offset, limit := extractOffsetAndLimit(request)
+
+    data, err := db.GetTopics(offset, limit)
+
+    if err != nil {
+        code = 500
+    }
+
+    return data, code, err
+}
+
+
+func PicksHandler(request events.APIGatewayProxyRequest) (interface{}, int, error) {
 
     var data interface{}
     code := 200

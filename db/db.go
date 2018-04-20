@@ -2,172 +2,217 @@ package db
 
 import (
     "projects/chronicle-api/models"
-    "projects/chronicle-api/utils"
     "encoding/json"
+    "projects/chronicle-api/s3"
+
+    "github.com/aws/aws-sdk-go/aws/session"
     "fmt"
 )
 
 var (
-    dummyVideoPackagesMap map[string]models.VideoPackage
-    dummyVideoPackages []models.VideoPackage
-    dummyHeros []models.Hero
-    dummyPlaylistsMap map[string]models.Playlist
-    dummyPlaylists []models.Playlist
+
+    videoPackageMap map[string]models.VideoPackage
+    videoMap map[string]models.Video
+    playlistMap map[string]models.Playlist
+    topicMap map[string][]models.Video
+
+    allVideos []models.Video
+    allHeros []models.Hero
+    allPlaylists []models.Playlist
+    allTopics []models.VideoCollection
+
+    s3Reader s3.Reader
+    s3Bucket string
+    s3Filename string
 )
 
 func GetPlaylists(offset, limit int) (models.PlaylistCollection, error) {
 
-    offset, limit = sanitizeParams(offset, limit, len(dummyPlaylists))
+    offset, limit = sanitizeParams(offset, limit, len(allPlaylists))
 
     dummyPlaylistCollection := models.PlaylistCollection{
-        Items: dummyPlaylists[offset:offset + limit],
-        Total: len(dummyPlaylists),
+        Items: allPlaylists[offset:offset + limit],
+        Total: len(allPlaylists),
         Offset: offset,
     }
 
     return dummyPlaylistCollection, error(nil)
 }
 
-func GetVideos(offset, limit int) (models.VideoPackageCollection, error) {
+func GetVideos(offset, limit int) (models.VideoCollection, error) {
 
-    offset, limit = sanitizeParams(offset, limit, len(dummyVideoPackages))
+    offset, limit = sanitizeParams(offset, limit, len(allVideos))
 
-    dummyVideoPackageCollection := models.VideoPackageCollection{
-        Items: dummyVideoPackages[offset:offset + limit],
-        Total: len(dummyVideoPackages),
+    dummyVideoCollection := models.VideoCollection{
+        Items: allVideos[offset:offset + limit],
+        Total: len(allVideos),
         Offset: offset,
     }
 
-    return dummyVideoPackageCollection, error(nil)
+    return dummyVideoCollection, error(nil)
+}
+
+func GetTopics(offset, limit int) (models.VideoCollectionList, error) {
+
+    offset, limit = sanitizeParams(offset, limit, len(allTopics))
+
+    topicCollection := models.VideoCollectionList {
+        Items: allTopics[offset:offset + limit],
+        Total: len(allTopics),
+        Offset: offset,
+    }
+
+    return topicCollection, error(nil)
 }
 
 func GetHeros(offset, limit int) (models.HeroCollection, error) {
 
-    offset, limit = sanitizeParams(offset, limit, len(dummyHeros))
+    offset, limit = sanitizeParams(offset, limit, len(allHeros))
 
-    dummyHeroCollection := models.HeroCollection{
-        Items: dummyHeros[offset:offset + limit],
-        Total: len(dummyHeros),
+    herosCollection := models.HeroCollection{
+        Items: allHeros[offset:offset + limit],
+        Total: len(allHeros),
         Offset: offset,
     }
 
-    return dummyHeroCollection, error(nil)
-}
-
-func GetPlaylist(id string) (models.Playlist, error) {
-
-    var playlist models.Playlist
-
-    if playlist, ok := dummyPlaylistsMap[id]; ok {
-        return playlist, nil
-    }
-
-    return playlist, fmt.Errorf("No such playlist as %v", id)
+    return herosCollection, error(nil)
 }
 
 func GetVideoPackage(id string) (models.VideoPackage, error) {
 
     var video models.VideoPackage
 
-    if video, ok := dummyVideoPackagesMap[id]; ok {
+    if video, ok := videoPackageMap[id]; ok {
         return video, nil
     }
 
     return video, fmt.Errorf("No such video as %v", id)
 }
 
-func Init() {
+func Init(options session.Options, bucket string, filename string) {
 
-    var (
-        dummyVideosMap map[string]models.Video
-        dummyVideos []models.Video
-    )
+    s3Reader = s3.NewReader(options)
+    s3Bucket = bucket
+    s3Filename = filename
 
-    rva, _ := getRawVideos()
-    rpa, _ := getRawPlaylists()
+    skel, _ := getSkeletonCollectionFromS3()
 
-    dummyVideosMap = make(map[string]models.Video, len(rva))
-    dummyVideoPackagesMap = make(map[string]models.VideoPackage, len(rva))
-    dummyPlaylistsMap = make(map[string]models.Playlist, len(rpa))
+    ProcessSkeletons(skel)
+}
 
-    for _, rp := range rpa {
+func ProcessSkeletons(skels models.SkeletonCollection) {
 
-        dummyPlaylists = append(dummyPlaylists, models.Playlist{
+    videoMap = make(map[string]models.Video, len(skels.Videos))
+    videoPackageMap = make(map[string]models.VideoPackage, len(skels.Videos))
+    playlistMap = make(map[string]models.Playlist, len(skels.Playlists))
+    topicMap = make(map[string][]models.Video)
 
-            Title: rp.Title,
-            Topic: rp.Topic,
-            Id: rp.Id,
-            Description: rp.Description,
-            CoverImageUrl: rp.CoverImageUrl,
-            Videos: []models.Video{},
-            LinkUri: "/playlist/" + rp.Id + "/" + utils.Slug(rp.Title),
-            Uri: "/playlist/" + rp.Id,
-        })
+    for _, video := range skels.Videos {
+        videoMap[video.Id] = video
+        allVideos = append(allVideos, video)
+
+        topicMap[video.Topic] = append(topicMap[video.Topic], video)
     }
 
-    j := 0
-    topic := "Earth"
+    for topic, videos := range topicMap {
 
-    for i, rv := range rva {
-
-        if i == 3 {
-            topic = "Africa"
-            j = 1
+        topicCollection := models.VideoCollection{
+            Items: videos,
+            Total: len(videos),
+            Offset: 0,
+            Title: topic,
         }
 
-        dummyVideosMap[rv.Id] = models.Video{
-            SmpData: &models.SmpData{
-                Items: rv.Items,
-                Title: rv.Title,
-                Summary: rv.Summary,
-                HoldingImageURL: rv.HoldingImageURL,
-            },
-            Id: rv.Id,
-            Topic: topic,
-            LinkUri: "/video/" + rv.Id + "/" + utils.Slug(rv.Title),
-            Uri: "/video/" + rv.Id,
-        }
-
-        dummyPlaylists[j].Videos = append(dummyPlaylists[j].Videos, dummyVideosMap[rv.Id])
-
-        dummyVideos = append(dummyVideos, dummyVideosMap[rv.Id])
-
-        var smpData models.SmpData
-        if len(dummyHeros) < 2 {
-            useVideo := (len(dummyHeros) % 2) == 0
-            smpData = makeSmpFromVideo(dummyVideosMap[rv.Id], useVideo)
-            dummyHeros = append(dummyHeros, models.Hero{
-                SmpData: &smpData,
-                LinkUri: dummyVideosMap[rv.Id].LinkUri,
-                Topic: dummyVideosMap[rv.Id].Topic,
-            })
-        }
+        allTopics = append(allTopics, topicCollection)
     }
 
-    for _, pl := range dummyPlaylists {
-        for _, v := range pl.Videos {
+    for _, playlistSkel := range skels.Playlists {
 
-            dummyVideoPackagesMap[v.Id] = models.VideoPackage{
-                Primary: &v,
-                Siblings: filteredVideos(pl.Videos, v.Id),
+        playlist := hydratePlaylist(playlistSkel)
+        playlistMap[playlistSkel.Id] = playlist
+        allPlaylists = append(allPlaylists, playlist)
+
+        for _, id := range playlistSkel.Items {
+            videoPackageMap[id] = models.VideoPackage{
+                Items: reorderedVideos(playlist.Items, id),
             }
-
-            dummyVideoPackages = append(dummyVideoPackages, dummyVideoPackagesMap[v.Id])
         }
-        dummyPlaylistsMap[pl.Id] = pl
-        var smpData models.SmpData
-        if len(dummyHeros) < 4 {
-            useVideo := (len(dummyHeros) % 2) == 0
-            smpData = makeSmpFromPlaylist(pl, useVideo)
-            dummyHeros = append(dummyHeros, models.Hero{
-                SmpData: &smpData,
-                LinkUri: pl.LinkUri,
-                Topic: pl.Topic,
-            })
-        }
-
     }
 
+    for _, heroSkel := range skels.Heros {
+
+        hero := hydrateHero(heroSkel)
+        allHeros = append(allHeros, hero)
+    }
+
+}
+
+func getVideo(id string) models.Video {
+
+    return videoMap[id]
+}
+
+func getPlaylist(id string) models.Playlist {
+
+    return playlistMap[id]
+}
+
+func getTopicVideos(topic string) []models.Video {
+
+    return topicMap[topic]
+}
+
+func hydrateHero(skel models.HeroSkeleton) models.Hero {
+
+    var linkSmpData models.SmpData
+    var linkUri string
+
+    if skel.LinkType == "video" {
+        video := getVideo(skel.LinkId)
+        linkSmpData = *video.SmpData
+        linkUri = video.LinkUri
+    } else {
+        playlist := getPlaylist(skel.LinkId)
+        video := playlist.Items[0]
+        linkSmpData.Title = playlist.Title
+        linkSmpData.Summary = playlist.Summary
+        linkSmpData.HoldingImageURL = playlist.CoverImageUrl
+        linkUri = video.LinkUri
+    }
+
+    hero := models.Hero {
+        Topic: skel.Topic,
+        BackgroundImage: skel.BackgroundImage,
+        SponsorId: skel.SponsorId,
+        SmpData: &linkSmpData,
+        LinkUri: linkUri,
+    }
+
+    if skel.PreviewId != "" {
+        video := getVideo(skel.PreviewId)
+        hero.PreviewSmpData = video.SmpData
+    }
+
+    return hero
+}
+
+func hydratePlaylist(skel models.PlaylistSkeleton) models.Playlist {
+
+    var videos []models.Video
+
+    for _, id := range skel.Items {
+        videos = append(videos, getVideo(id))
+    }
+
+    return models.Playlist{
+        Items: videos,
+        Topic: skel.Topic,
+        Title: skel.Title,
+        Summary: skel.Summary,
+        SponsorID: skel.SponsorID,
+        CoverImageUrl: skel.CoverImageUrl,
+        Curator: skel.Curator,
+    }
 }
 
 func sanitizeParams(offset, limit, size int) (int, int) {
@@ -187,9 +232,15 @@ func sanitizeParams(offset, limit, size int) (int, int) {
     return offset, limit
 }
 
-func filteredVideos(input []models.Video, id string) []models.Video {
+func reorderedVideos(input []models.Video, id string) []models.Video {
 
     var output []models.Video
+
+    for _, v := range input {
+        if v.Id == id {
+            output = append(output, v)
+        }
+    }
 
     for _, v := range input {
         if v.Id != id {
@@ -200,236 +251,233 @@ func filteredVideos(input []models.Video, id string) []models.Video {
     return output
 }
 
-func makeSmpFromPlaylist(pl models.Playlist, withVideo bool) models.SmpData {
+func getSkeletonCollectionFromS3() (models.SkeletonCollection, error) {
 
-    var items []models.MediaItem
+    var skel models.SkeletonCollection
 
-    if withVideo {
-        items = pl.Videos[0].SmpData.Items
+    raw, err := s3Reader.ReadBytes(s3Bucket, s3Filename)
+
+    if err != nil {
+        return skel, err
     }
 
-    return models.SmpData{
-        Title: pl.Title,
-        Summary: pl.Description,
-        HoldingImageURL: pl.CoverImageUrl,
-        Items: items,
-    }
+    err = json.Unmarshal(raw, &skel)
+
+    return skel, err
 }
 
-func makeSmpFromVideo(v models.Video, withVideo bool) models.SmpData {
+func getSkeletonCollectionInline() (models.SkeletonCollection, error) {
 
-    var items []models.MediaItem
+    var skel models.SkeletonCollection
 
-    if withVideo {
-        items = v.SmpData.Items
-    }
-
-    return models.SmpData{
-        Title: v.SmpData.Title,
-        Summary: v.SmpData.Summary,
-        HoldingImageURL: v.SmpData.HoldingImageURL,
-        Items: items,
-    }
-}
-
-type rawDummyVideo struct {
-    Title       string `json:"title"`
-    Summary string `json:"summary,omitempty"`
-    Id string `json:"id"`
-    HoldingImageURL string `json:"holdingImageURL"`
-    Topic string `json:"topic"`
-    Items []models.MediaItem `json:"items"`
-}
-
-func getDummyVideos() []byte {
-
-    dummyData1 := []byte(`[{
-  "title": "Footage of first polar bear cub born in UK in 25 years",
-  "id": "p061b9c4",
-  "holdingImageURL": "https://ichef.bbci.co.uk/images/ic/$recipe/p061bbfx.jpg",
-  "guidance": "",
-  "embedRights": "allowed",
-  "summary": "The polar bear cub is described as a \"confident and curious\" character",
-  "liveRewind": false,
-  "simulcast": false,
-  "items": [
-    {
-      "vpid": "p061b9c8",
-      "live": false,
-      "duration": 29,
-      "kind": "programme"
-    }
-  ]
-},
-{
-  "embedRights": "allowed",
-  "id": "p05ss2r1",
-  "summary": "A female polar bear at a Scottish animal park has given birth to a cub, says the Royal Zoological Society of Scotland.",
-  "holdingImageURL": "https://ichef.bbci.co.uk/images/ic/$recipe/p05ss338.jpg",
-  "items": [
-    {
-      "vpid": "p05ss2r3",
-      "live": false,
-      "kind": "programme"
-    }
-  ],
-  "title": "UK's first polar bear cub in 25 years born in Highlands",
-  "simulcast": false
-},{
-  "embedRights": "blocked",
-  "id": "p05ncdqc",
-  "holdingImageURL": "https://ichef.bbci.co.uk/images/ic/$recipe/p05ncg65.jpg",
-  "items": [
-    {
-      "vpid": "p05ncdqf",
-      "live": false,
-      "kind": "programme"
-    }
-  ],
-  "title": "Doug Allan: A life capturing the natural world on camera",
-  "summary":"Doug Allan is one of the world's best nature cameramen and has filmed some of the most memorable scenes ever broadcast, with some close scrapes with animals along the way.",
-  "simulcast": false
-},{
-  "embedRights": "blocked",
-  "id": "p059scjv",
-  "holdingImageURL": "https://ichef.bbci.co.uk/images/ic/$recipe/p059sdxl.jpg",
-  "items": [
-    {
-      "vpid": "p059sdm4",
-      "live": false,
-      "kind": "programme"
-    }
-  ],
-  "title": "The snow might not last long with July temperatures reaching 25 degrees",
-  "summary": "Christmas has come early for Lapland zoo polar bears with snow in July.",
-  "simulcast": false
-},{
-  "title": "Animal imitator Justice Osei hopes his talent will earn him a place in the Guinness Book of World Records",
-  "id":"p061dd3c",
-  "holdingImageURL": "https://ichef.bbci.co.uk/images/ic/$recipe/p061dkdj.jpg",
-  "guidance": "",
-  "embedRights": "allowed",
-  "summary": "As a boy, Justice Osei from Ghana discovered he had an unusual talent: imitating the sounds of his sheep, goats and other local wildlife. Since then he has taught himself many more, and now has more than 50 species in his vocal menagerie. He performed some of them for BBC Pidgin.",
-  "liveRewind": false,
-  "simulcast": false,
-  "items": [
-    {
-      "vpid": "p061dd3h",
-      "live": false,
-      "duration": 47,
-      "kind": "programme"
-    }
-  ]
-},
-{
-  "title": "The deer hunters of Ghana",
-  "id":"p0529lrx",
-  "holdingImageURL": "https://ichef.bbci.co.uk/images/ic/$recipe/p0529nd6.jpg",
-  "guidance": "",
-  "embedRights": "blocked",
-  "summary": "Every May the people of the Ghanaian coastal town of Winneba celebrate their migration from Timbuktu with a traditional hunt, known as the Aboakyer festival.",
-  "liveRewind": false,
-  "simulcast": false,
-  "items": [
-    {
-      "vpid": "p0529ls0",
-      "live": false,
-      "duration": 178,
-      "kind": "programme"
-    }
-  ]
-},
-{
-  "title": "The villages that have become a sanctuary for monkeys",
-  "id":"p0518nt7",
-  "holdingImageURL": "https://ichef.bbci.co.uk/images/ic/$recipe/p051r5v5.jpg",
-  "guidance": "",
-  "embedRights": "blocked",
-  "summary": "Local people believe the monkeys are sacred and give them proper burials when they die.",
-  "liveRewind": false,
-  "simulcast": false,
-  "items": [
-    {
-      "vpid": "p0518nt9",
-      "live": false,
-      "duration": 162,
-      "kind": "programme"
-    }
-  ]
-},
-{
-  "title": "Ghana's record-breaking dinner table seats 3,600 guests",
-  "id":"p04yfy06",
-  "holdingImageURL": "https://ichef.bbci.co.uk/images/ic/$recipe/p04yjc0p.jpg",
-  "guidance": "",
-  "embedRights": "blocked",
-  "summary": "A food seasoning manufacturer in Ghana has built a table which has been recognised by Guinness World Records as the longest in the world.",
-  "liveRewind": false,
-  "simulcast": false,
-  "items": [
-    {
-      "vpid": "p04yfy0d",
-      "live": false,
-      "duration": 70,
-      "kind": "programme"
-    }
-  ]
-}
-]`)
-    return dummyData1
-}
-
-type rawDummyPlaylist struct {
-    Title       string `json:"title"`
-    Description string `json:"description,omitempty"`
-    Id string `json:"Id"`
-    Topic string `json:"topic"`
-    CoverImageUrl string `json:"coverImageUrl"`
-}
-
-func getDummyPlaylists() []byte {
-
-    dummyData := []byte(`[{
-
-	"title" : "Cuddly polar bears",
-	"description": "Polar bears are very cute - unless you happen to be a seal.",
-	"coverImageUrl": "https://ichef.bbci.co.uk/images/ic/$recipe/p05ss338.jpg",
-	"topic": "Earth",
-	"Id" : "abcdef"
-	},{
-
-	"title" : "Funny things in Ghana",
-	"description": "Funny things seem to be happening in Ghana for some reason.",
-	"coverImageUrl": "https://ichef.bbci.co.uk/images/ic/$recipe/p0529nd6.jpg",
-	"topic": "Africa",
-	"Id" : "ghijk"
-	}]`)
-
-    return dummyData
-}
-
-func getRawPlaylists() ([]rawDummyPlaylist, error) {
-
-    var rpa []rawDummyPlaylist
-
-    err := json.Unmarshal(getDummyPlaylists(), &rpa)
+    err := json.Unmarshal(getInlineSkeletonData(), &skel)
 
     if err != nil {
         fmt.Println(err)
     }
 
-    return rpa, err
+    return skel, err
 }
 
-func getRawVideos() ([]rawDummyVideo, error) {
+func getInlineSkeletonData() []byte {
 
-    var rva []rawDummyVideo
-
-    err := json.Unmarshal(getDummyVideos(), &rva)
-
-    if err != nil {
-        fmt.Println(err)
+    skeletonBytes := []byte(`
+{
+  "videos": [
+        {
+            "id": "p061b9c4",
+            "linkUri": "/video/p061b9c4/footage-of-first-polar-bear-cub-born-in-uk-in-25-years",
+            "smpData": {
+                "holdingImageURL": "https://ichef.bbci.co.uk/images/ic/$recipe/p061bbfx.jpg",
+                "items": [
+                    {
+                        "duration": 29,
+                        "kind": "programme",
+                        "vpid": "p061b9c8"
+                    }
+                ],
+                "summary": "The polar bear cub is described as a \"confident and curious\" character",
+                "title": "Footage of first polar bear cub born in UK in 25 years"
+            },
+            "topic": "Earth",
+            "uri": "/video/p061b9c4"
+        },
+        {
+            "id": "p05ss2r1",
+            "linkUri": "/video/p05ss2r1/uk-s-first-polar-bear-cub-in-25-years-born-in-highlands",
+            "smpData": {
+                "holdingImageURL": "https://ichef.bbci.co.uk/images/ic/$recipe/p05ss338.jpg",
+                "items": [
+                    {
+                        "kind": "programme",
+                        "vpid": "p05ss2r3"
+                    }
+                ],
+                "summary": "A female polar bear at a Scottish animal park has given birth to a cub, says the Royal Zoological Society of Scotland.",
+                "title": "UK's first polar bear cub in 25 years born in Highlands"
+            },
+            "topic": "Earth",
+            "uri": "/video/p05ss2r1"
+        },
+        {
+            "id": "p05ncdqc",
+            "linkUri": "/video/p05ncdqc/doug-allan-a-life-capturing-the-natural-world-on-camera",
+            "smpData": {
+                "holdingImageURL": "https://ichef.bbci.co.uk/images/ic/$recipe/p05ncg65.jpg",
+                "items": [
+                    {
+                        "kind": "programme",
+                        "vpid": "p05ncdqf"
+                    }
+                ],
+                "summary": "Doug Allan is one of the world's best nature cameramen and has filmed some of the most memorable scenes ever broadcast, with some close scrapes with animals along the way.",
+                "title": "Doug Allan: A life capturing the natural world on camera"
+            },
+            "topic": "Earth",
+            "uri": "/video/p05ncdqc"
+        },
+        {
+            "id": "p059scjv",
+            "linkUri": "/video/p059scjv/the-snow-might-not-last-long-with-july-temperatures-reaching-25-degrees",
+            "smpData": {
+                "holdingImageURL": "https://ichef.bbci.co.uk/images/ic/$recipe/p059sdxl.jpg",
+                "items": [
+                    {
+                        "kind": "programme",
+                        "vpid": "p059sdm4"
+                    }
+                ],
+                "summary": "Christmas has come early for Lapland zoo polar bears with snow in July.",
+                "title": "The snow might not last long with July temperatures reaching 25 degrees"
+            },
+            "topic": "Africa",
+            "uri": "/video/p059scjv"
+        },
+        {
+            "id": "p061dd3c",
+            "linkUri": "/video/p061dd3c/animal-imitator-justice-osei-hopes-his-talent-will-earn-him-a-place-in-the-guinness-book-of-world-records",
+            "smpData": {
+                "holdingImageURL": "https://ichef.bbci.co.uk/images/ic/$recipe/p061dkdj.jpg",
+                "items": [
+                    {
+                        "duration": 47,
+                        "kind": "programme",
+                        "vpid": "p061dd3h"
+                    }
+                ],
+                "summary": "As a boy, Justice Osei from Ghana discovered he had an unusual talent: imitating the sounds of his sheep, goats and other local wildlife. Since then he has taught himself many more, and now has more than 50 species in his vocal menagerie. He performed some of them for BBC Pidgin.",
+                "title": "Animal imitator Justice Osei hopes his talent will earn him a place in the Guinness Book of World Records"
+            },
+            "topic": "Africa",
+            "uri": "/video/p061dd3c"
+        },
+        {
+            "id": "p0529lrx",
+            "linkUri": "/video/p0529lrx/the-deer-hunters-of-ghana",
+            "smpData": {
+                "holdingImageURL": "https://ichef.bbci.co.uk/images/ic/$recipe/p0529nd6.jpg",
+                "items": [
+                    {
+                        "duration": 178,
+                        "kind": "programme",
+                        "vpid": "p0529ls0"
+                    }
+                ],
+                "summary": "Every May the people of the Ghanaian coastal town of Winneba celebrate their migration from Timbuktu with a traditional hunt, known as the Aboakyer festival.",
+                "title": "The deer hunters of Ghana"
+            },
+            "topic": "Africa",
+            "uri": "/video/p0529lrx"
+        },
+        {
+            "id": "p0518nt7",
+            "linkUri": "/video/p0518nt7/the-villages-that-have-become-a-sanctuary-for-monkeys",
+            "smpData": {
+                "holdingImageURL": "https://ichef.bbci.co.uk/images/ic/$recipe/p051r5v5.jpg",
+                "items": [
+                    {
+                        "duration": 162,
+                        "kind": "programme",
+                        "vpid": "p0518nt9"
+                    }
+                ],
+                "summary": "Local people believe the monkeys are sacred and give them proper burials when they die.",
+                "title": "The villages that have become a sanctuary for monkeys"
+            },
+            "topic": "Africa",
+            "uri": "/video/p0518nt7"
+        },
+        {
+            "id": "p04yfy06",
+            "linkUri": "/video/p04yfy06/ghana-s-record-breaking-dinner-table-seats-3-600-guests",
+            "smpData": {
+                "holdingImageURL": "https://ichef.bbci.co.uk/images/ic/$recipe/p04yjc0p.jpg",
+                "items": [
+                    {
+                        "duration": 70,
+                        "kind": "programme",
+                        "vpid": "p04yfy0d"
+                    }
+                ],
+                "summary": "A food seasoning manufacturer in Ghana has built a table which has been recognised by Guinness World Records as the longest in the world.",
+                "title": "Ghana's record-breaking dinner table seats 3,600 guests"
+            },
+            "topic": "Africa",
+            "uri": "/video/p04yfy06"
+        }
+    ],
+  "playlists": [
+    {
+      "title": "Cuddly polar bears",
+      "description": "Polar bears are very cute - unless you happen to be a seal.",
+      "coverImageUrl": "https://ichef.bbci.co.uk/images/ic/$recipe/p05ss338.jpg",
+      "topic": "Earth",
+      "id": "abcdef",
+      "items": [
+        "p061b9c4",
+        "p05ss2r1",
+        "p05ncdqc",
+        "p059scjv"
+      ]
+    },
+    {
+      "title": "Funny things in Ghana",
+      "description": "Funny things seem to be happening in Ghana for some reason.",
+      "coverImageUrl": "https://ichef.bbci.co.uk/images/ic/$recipe/p0529nd6.jpg",
+      "topic": "Africa",
+      "id": "ghijk",
+      "items": [
+        "p061dd3c",
+        "p0529lrx",
+        "p0518nt7",
+        "p04yfy06"
+      ]
     }
+  ],
+  "heros": [
+    {
+      "linkId": "p061b9c4",
+      "linkType": "video",
+      "topic": "Earth"
+    },
+    {
+      "linkId": "ghijk",
+      "linkType": "playlist",
+      "topic": "Africa"
+    },
+    {
+      "linkId": "p05ss2r1",
+      "linkType": "video",
+      "topic": "Earth"
+    },
+    {
+      "linkId": "abcdef",
+      "linkType": "playlist",
+      "topic": "Earth"
+    }
+  ]
+}
+  `)
 
-    return rva, err
+    return skeletonBytes
 }
