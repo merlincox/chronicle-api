@@ -2,8 +2,8 @@
 
 set -euo pipefail
 
-api_id=0si9vxu19d
-stage_name=1804201241
+api_id=zhs7h308vg
+stage_name=1804221651
 package=models
 package_dir=models
 
@@ -16,7 +16,7 @@ aws apigateway get-export --rest-api-id $api_id  --stage-name $stage_name --expo
 
 schema_generator=$(which schema-generator)
 
-if [ ! -z $schema_generator ]; then
+if [ ! -z "$schema_generator" ]; then
 
     $schema_generator -p $package -nsk export/$stage_name.json > export/$stage_name.go
 
