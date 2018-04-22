@@ -55,7 +55,7 @@ func main() {
         playlists, _ := db.GetPlaylists(0, 0)
         fmt.Println(utils.JsonStringify(playlists))
 
-        topics, _ := db.GetTopics(0, 0)
+        topics, _ := db.GetTopics(0, 0, 2)
         fmt.Println(utils.JsonStringify(topics))
     }
 }

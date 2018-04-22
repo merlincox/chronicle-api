@@ -447,7 +447,7 @@ Resources:
               produces:
               - "application/json"
               parameters:
-              - name: "video_limit"
+              - name: "width"
                 in: "query"
                 required: false
                 type: "string"
@@ -480,7 +480,7 @@ Resources:
                 cacheNamespace: "2lhkzh"
                 cacheKeyParameters:
                 - "method.request.querystring.limit"
-                - "method.request.querystring.video_limit"
+                - "method.request.querystring.width"
                 - "method.request.querystring.offset"
                 contentHandling: "CONVERT_TO_TEXT"
                 type: "aws_proxy"
@@ -732,6 +732,19 @@ Resources:
                 type: "string"
             title: "Video"
             description: "An individual video within GNL Chronicle"
+          Topic:
+            type: "object"
+            required:
+            - "id"
+            properties:
+              id:
+                type: "string"
+              title:
+                type: "string"
+              summary:
+                type: "string"
+            title: "Topic"
+            description: "A topic within GNL Chronicle"
           Hero:
             type: "object"
             required:
@@ -783,6 +796,8 @@ Resources:
                 type: "string"
               summary:
                 type: "string"
+              uri:
+                type: "string"
               offset:
                 type: "integer"
               total:
@@ -809,6 +824,10 @@ Resources:
                 type: "array"
                 items:
                   $ref: "#/definitions/HeroSkeleton"
+              topics:
+                type: "array"
+                items:
+                  $ref: "#/definitions/Topic"
             title: "SkeletonCollection"
             description: "A collection of skeletons and videos for mocking within GNL Chronicle Backend"
           VideoCollectionList:

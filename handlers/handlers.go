@@ -12,13 +12,13 @@ type InnerHandler func(events.APIGatewayProxyRequest) (interface{}, int, error)
 
 func UnknownRouteHandler(request events.APIGatewayProxyRequest) (interface{}, int, error) {
 
-    var data interface{}
-    return data, 404, errors.New("Unknown route")
+    var empty interface{}
+
+    return empty, 404, errors.New("Unknown route")
 }
 
 func HerosHandler(request events.APIGatewayProxyRequest) (interface{}, int, error) {
 
-    var data interface{}
     code := 500
 
     offset, limit := extractOffsetAndLimit(request)
@@ -34,8 +34,6 @@ func HerosHandler(request events.APIGatewayProxyRequest) (interface{}, int, erro
 
 func VideoHandler(request events.APIGatewayProxyRequest) (interface{}, int, error) {
 
-    var data interface{}
-
     data, err := db.GetVideoPackage(request.PathParameters["id"])
 
     if err == nil {
@@ -47,27 +45,27 @@ func VideoHandler(request events.APIGatewayProxyRequest) (interface{}, int, erro
 
 func MostWatchedHandler(request events.APIGatewayProxyRequest) (interface{}, int, error) {
 
-    var data interface{}
-    var err error
-
     if models.ValidPeriods[request.PathParameters["period"]] {
 
         offset, limit := extractOffsetAndLimit(request)
-        data, err = db.GetVideos(offset, limit)
+        data, err := db.GetVideos(offset, limit)
 
         if err == nil {
+
+            data.Uri = request.RequestContext.ResourcePath + "/" + request.PathParameters["period"]
             return data, 200, nil
         }
 
         return data, 500, err
     }
 
+    var data interface{}
+
     return data, 404, errors.New("Undefined period")
 }
 
 func PlaylistsHandler(request events.APIGatewayProxyRequest) (interface{}, int, error) {
 
-    var data interface{}
     code := 200
 
     offset, limit := extractOffsetAndLimit(request)
@@ -83,11 +81,11 @@ func PlaylistsHandler(request events.APIGatewayProxyRequest) (interface{}, int, 
 
 func TopicsHandler(request events.APIGatewayProxyRequest) (interface{}, int, error) {
 
-    var data interface{}
     code := 200
     offset, limit := extractOffsetAndLimit(request)
+    width := extractIntegerQuery(request,"width")
 
-    data, err := db.GetTopics(offset, limit)
+    data, err := db.GetTopics(offset, limit, width)
 
     if err != nil {
         code = 500
@@ -99,17 +97,18 @@ func TopicsHandler(request events.APIGatewayProxyRequest) (interface{}, int, err
 
 func PicksHandler(request events.APIGatewayProxyRequest) (interface{}, int, error) {
 
-    var data interface{}
     code := 200
     offset, limit := extractOffsetAndLimit(request)
 
-    data, err := db.GetVideos(offset, limit)
+    videos, err := db.GetVideos(offset, limit)
 
     if err != nil {
         code = 500
     }
 
-    return data, code, err
+    videos.Uri = request.RequestContext.ResourcePath
+
+    return videos, code, err
 }
 
 func extractIntegerQuery(request events.APIGatewayProxyRequest, param string) int {

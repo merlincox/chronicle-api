@@ -15,7 +15,7 @@
         "summary": "The polar bear cub is described as a \"confident and curious\" character",
         "title": "Footage of first polar bear cub born in UK in 25 years"
       },
-      "topic": "Earth",
+      "topic": "earth",
       "uri": "/video/p061b9c4"
     },
     {
@@ -32,7 +32,7 @@
         "summary": "A female polar bear at a Scottish animal park has given birth to a cub, says the Royal Zoological Society of Scotland.",
         "title": "UK's first polar bear cub in 25 years born in Highlands"
       },
-      "topic": "Earth",
+      "topic": "earth",
       "uri": "/video/p05ss2r1"
     },
     {
@@ -49,7 +49,7 @@
         "summary": "Doug Allan is one of the world's best nature cameramen and has filmed some of the most memorable scenes ever broadcast, with some close scrapes with animals along the way.",
         "title": "Doug Allan: A life capturing the natural world on camera"
       },
-      "topic": "Earth",
+      "topic": "earth",
       "uri": "/video/p05ncdqc"
     },
     {
@@ -66,7 +66,7 @@
         "summary": "Christmas has come early for Lapland zoo polar bears with snow in July.",
         "title": "The snow might not last long with July temperatures reaching 25 degrees"
       },
-      "topic": "Africa",
+      "topic": "africa",
       "uri": "/video/p059scjv"
     },
     {
@@ -84,7 +84,7 @@
         "summary": "As a boy, Justice Osei from Ghana discovered he had an unusual talent: imitating the sounds of his sheep, goats and other local wildlife. Since then he has taught himself many more, and now has more than 50 species in his vocal menagerie. He performed some of them for BBC Pidgin.",
         "title": "Animal imitator Justice Osei hopes his talent will earn him a place in the Guinness Book of World Records"
       },
-      "topic": "Africa",
+      "topic": "africa",
       "uri": "/video/p061dd3c"
     },
     {
@@ -102,7 +102,7 @@
         "summary": "Every May the people of the Ghanaian coastal town of Winneba celebrate their migration from Timbuktu with a traditional hunt, known as the Aboakyer festival.",
         "title": "The deer hunters of Ghana"
       },
-      "topic": "Africa",
+      "topic": "africa",
       "uri": "/video/p0529lrx"
     },
     {
@@ -120,7 +120,7 @@
         "summary": "Local people believe the monkeys are sacred and give them proper burials when they die.",
         "title": "The villages that have become a sanctuary for monkeys"
       },
-      "topic": "Africa",
+      "topic": "africa",
       "uri": "/video/p0518nt7"
     },
     {
@@ -138,7 +138,7 @@
         "summary": "A food seasoning manufacturer in Ghana has built a table which has been recognised by Guinness World Records as the longest in the world.",
         "title": "Ghana's record-breaking dinner table seats 3,600 guests"
       },
-      "topic": "Africa",
+      "topic": "africa",
       "uri": "/video/p04yfy06"
     }
   ],
@@ -147,7 +147,7 @@
       "title": "Cuddly polar bears",
       "description": "Polar bears are very cute - unless you happen to be a seal.",
       "coverImageUrl": "https://ichef.bbci.co.uk/images/ic/$recipe/p05ss338.jpg",
-      "topic": "Earth",
+      "topic": "earth",
       "id": "abcdef",
       "items": [
         "p061b9c4",
@@ -160,7 +160,7 @@
       "title": "Funny things in Ghana",
       "description": "Funny things seem to be happening in Ghana for some reason.",
       "coverImageUrl": "https://ichef.bbci.co.uk/images/ic/$recipe/p0529nd6.jpg",
-      "topic": "Africa",
+      "topic": "africa",
       "id": "ghijk",
       "items": [
         "p061dd3c",
@@ -190,6 +190,18 @@
       "linkId": "abcdef",
       "linkType": "playlist",
       "topic": "Earth"
+    }
+  ],
+  "topics": [
+    {
+      "id": "earth",
+      "title": "Planet Earth",
+      "summary": "Lots of videos about the Planet Earth"
+    },
+    {
+      "id": "africa",
+      "title": "Africa",
+      "summary": "Lots of videos about the continent of Africa"
     }
   ]
 }
