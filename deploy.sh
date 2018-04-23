@@ -3,7 +3,23 @@
 set -euo pipefail
 
 timestamp=$(date +"%y%m%d%H%M")
-release=$timestamp
+release_pattern="^[a-z0-9]+$"
+
+if [ $# -ne 1 ]; then
+
+    echo "USAGE $0 release-name"
+    exit 1
+
+fi
+
+if [[ ! $1 =~ $release_pattern ]] ; then
+
+    echo "Invalid release-name: $1 does not match $release_pattern regex"
+    exit 1
+
+fi
+
+release=$1
 
 cf_bucket=cf-api-import-${timestamp}
 cf_stack=api-stack-${release}
@@ -15,7 +31,7 @@ cd $( dirname $0 )
 
 run_dir=$(pwd)
 
-package_yml=$run_dir/package.yml
+package_yml=$run_dir/export/package.yml
 
 bucket_created=0
 
